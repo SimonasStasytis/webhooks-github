@@ -3,7 +3,79 @@ import streamlit.components.v1 as components
 import requests
 import base64
 import uuid
- 
+
+# ── Green background injection ────────────────────────────────────────────────
+st.markdown(
+    """
+    <style>
+        /* Main app background */
+        .stApp {
+            background-color: #2d6a4f;
+        }
+
+        /* Sidebar background (if used) */
+        [data-testid="stSidebar"] {
+            background-color: #1b4332;
+        }
+
+        /* Top toolbar */
+        [data-testid="stToolbar"] {
+            background-color: #2d6a4f;
+        }
+
+        /* Header */
+        [data-testid="stHeader"] {
+            background-color: #2d6a4f;
+        }
+
+        /* Text color adjustments for readability on green */
+        .stApp, .stApp p, .stApp label, .stApp span, .stApp div {
+            color: #d8f3dc;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: #b7e4c7 !important;
+        }
+
+        /* Button styling */
+        .stButton > button {
+            background-color: #1b4332;
+            color: #d8f3dc;
+            border: 1px solid #52b788;
+        }
+
+        .stButton > button:hover {
+            background-color: #52b788;
+            color: #1b4332;
+        }
+
+        /* Input/widget backgrounds */
+        .stTextInput > div > div > input,
+        .stSelectbox > div > div {
+            background-color: #1b4332;
+            color: #d8f3dc;
+        }
+
+        /* Divider color */
+        hr {
+            border-color: #52b788;
+        }
+
+        /* Alert/info boxes */
+        .stAlert {
+            background-color: #1b4332;
+        }
+
+        /* Spinner text */
+        .stSpinner > div {
+            color: #b7e4c7;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 def get_webhook_url():
     """Read the webhook URL from Streamlit secrets or fallback to file"""
     # Try Streamlit secrets first (for cloud deployment)
@@ -11,7 +83,7 @@ def get_webhook_url():
         return st.secrets["WEBHOOK_URL"]
     except (KeyError, FileNotFoundError):
         pass
- 
+
     # Fallback: read from local file (for local development)
     try:
         with open("audio_listener_link.txt", "r") as f:
@@ -27,15 +99,15 @@ def get_webhook_url():
     except FileNotFoundError:
         st.error("No webhook URL found. Add `WEBHOOK_URL` to your Streamlit secrets.")
         return None
- 
- 
+
+
 def send_audio_to_webhook(audio_data, webhook_url, session_id):
     """Send audio data to the webhook and return the response"""
     try:
         files = {"audio": ("recording.wav", audio_data, "audio/wav")}
         data = {"session_id": session_id}
         response = requests.post(webhook_url, files=files, data=data, timeout=120)
- 
+
         if response.status_code == 200:
             return response.content
         else:
@@ -47,8 +119,8 @@ def send_audio_to_webhook(audio_data, webhook_url, session_id):
     except requests.exceptions.RequestException as e:
         st.error(f"Request error: {str(e)}")
         return None
- 
- 
+
+
 def autoplay_audio(audio_bytes):
     """Auto-play audio using an HTML5 audio element"""
     b64 = base64.b64encode(audio_bytes).decode()
@@ -62,21 +134,21 @@ def autoplay_audio(audio_bytes):
         </script>
     """
     components.html(html_string, height=0)
- 
- 
+
+
 # ── App ──────────────────────────────────────────────────────────────────────
- 
+
 st.title("Voice Recording & Webhook Response")
- 
+
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "last_audio_id" not in st.session_state:
     st.session_state.last_audio_id = None
 if "response_count" not in st.session_state:
     st.session_state.response_count = 0
- 
+
 webhook_url = get_webhook_url()
- 
+
 if webhook_url:
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -87,23 +159,23 @@ if webhook_url:
             st.session_state.last_audio_id = None
             st.session_state.response_count = 0
             st.rerun()
- 
+
     st.divider()
- 
+
     audio_data = st.audio_input("Record your voice")
- 
+
     if audio_data is not None:
         audio_id = hash(audio_data.getvalue())
         st.audio(audio_data, format="audio/wav")
- 
+
         if st.session_state.last_audio_id != audio_id:
             st.session_state.last_audio_id = audio_id
- 
+
             with st.spinner("Processing… waiting for response"):
                 response_audio = send_audio_to_webhook(
                     audio_data, webhook_url, st.session_state.session_id
                 )
- 
+
             if response_audio:
                 st.session_state.response_count += 1
                 st.success("Response received!")
